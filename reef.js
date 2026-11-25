@@ -371,16 +371,23 @@
   if(habitat!==id)pellets.length=0;
   habitat=id;
   const [name,description]=scenes[id];
+  habitatList.value=id;
   document.title='Lo-fi Fish — '+name;
   canvas.setAttribute('aria-label',description+'。タップして餌をあげる');
   document.getElementById('habitat-name').textContent=name;
   draw()
  }
  const habitatOrder=Object.keys(scenes);
+ const habitatList=document.getElementById('habitat-list');
+ for(const id of habitatOrder)habitatList.add(new Option(scenes[id][0],id));
+ function selectHabitat(id){
+  chooseHabitat(id);
+  try{localStorage.setItem('aqua-habitat',id)}catch{}
+ }
+ habitatList.onchange=()=>selectHabitat(habitatList.value);
  function cycleHabitat(step){
   const nextIndex=(habitatOrder.indexOf(habitat)+step+habitatOrder.length)%habitatOrder.length;
-  chooseHabitat(habitatOrder[nextIndex]);
-  try{localStorage.setItem('aqua-habitat',habitat)}catch{}
+  selectHabitat(habitatOrder[nextIndex]);
  }
  document.getElementById('prev-habitat').onclick=()=>cycleHabitat(-1);
  document.getElementById('next-habitat').onclick=()=>cycleHabitat(1);
