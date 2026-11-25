@@ -42,7 +42,9 @@
   deep:['Deep Sea','濃紺の海で触手を揺らすクラゲ'],
   river:['Mountain Stream','山と針葉樹を背にした岩場の早瀬。その下を泳ぐ川魚'],
   marsh:['Marsh','夕暮れのガマの穂とトンボ。沈んだ枝の間を泳ぐオタマジャクシ'],
-  pond:['Lily Pond','岸辺の柳と水面のスイレン。葉の下を泳ぐ錦鯉']
+  pond:['Lily Pond','岸辺の柳と水面のスイレン。葉の下を泳ぐ錦鯉'],
+  goldfish:['Shoji Garden','障子と丸窓を背景に、朱色や更紗の金魚が尾をひらいて泳ぐ和モダン水槽'],
+  medaka:['Suribachi Bowl','放射状のすり目が透ける陶器のすり鉢を上から眺める、メダカの水槽']
  };
  let habitat='reef';
  function buildScenery(id){
@@ -105,6 +107,20 @@
   stocks.river.push(trout)
  }
  stocks.reef.forEach((fish,i)=>fish.nose=5*swimmers[i][4]);
+ stocks.goldfish=Array.from({length:9},(_,i)=>{
+  const fish=makeFish(44+i*49,46+i*23%77,range(5,9));
+  fish.coat=i%3;return fish
+ });
+ stocks.medaka=Array.from({length:21},(_,i)=>{
+  const group=Math.floor(i/7);
+  const fish=makeFish(112+group*102+(i%7)*6,72+(group%2)*28+Math.sin(i*2)*12,range(7,12),group);
+  fish.heading=fish.facing>0?0:Math.PI;fish.coat=i%3;return fish
+ });
+ function keepInBowl(point){
+  const dx=point.x-240,dy=point.y-92;
+  const radius=Math.hypot(dx/202,dy/67);
+  if(radius>1){point.x=240+dx/radius;point.y=92+dy/radius}
+ }
  const pellets=[];
  const jellies=[[64,71,1.1],[138,108,.75],[217,63,1.4],[294,105,.75],[370,62,1.08],[432,105,.62]];
  stocks.deep=jellies.map(([x,y])=>makeFish(x,y,range(2,4)));
@@ -114,8 +130,12 @@
   const surface=waterline();
   for(let i=0;i<4;i++){
    // Each flake enters the water separately and loses its falling speed.
-   pellets.push({x:clamp(x+range(-4,4),4,W-4),y:Math.min(y-8,surface-2)-i*2,
-    vy:range(10,22),sink:range(3.7,6.7),phase:range(0,6.28),age:0,owner:null})
+   const pellet={x:clamp(x+range(-4,4),4,W-4),y:Math.min(y-8,surface-2)-i*2,
+    vy:range(10,22),sink:range(3.7,6.7),phase:range(0,6.28),age:0,owner:null};
+   if(habitat==='medaka'){
+    pellet.y=y+range(-2,2);keepInBowl(pellet)
+   }
+   pellets.push(pellet)
   }
   while(pellets.length>48)pellets.shift();
   if(!request&&!document.hidden){last=0;request=requestAnimationFrame(frame)}
@@ -124,12 +144,14 @@
   const surface=waterline();
   for(let i=pellets.length-1;i>=0;i--){
    const p=pellets[i];p.age+=dt;
-   if(p.y<surface)p.vy+=dt*125;
+   if(habitat==='medaka'){
+    p.x+=Math.sin(p.age+p.phase)*dt*.7;keepInBowl(p)
+   }else if(p.y<surface)p.vy+=dt*125;
    else{
     p.vy+=(p.sink-p.vy)*(1-Math.exp(-dt*6));
     p.x=clamp(p.x+dt*(Math.sin(p.age*1.5+p.phase)*1.8+(habitat==='river'?2.2:0)),4,W-4)
    }
-   p.y=Math.min(166,p.y+p.vy*dt);
+   if(habitat!=='medaka')p.y=Math.min(166,p.y+p.vy*dt);
    if(p.age>55)pellets.splice(i,1)
   }
  }
@@ -188,11 +210,11 @@
    }
    fish.rest=Math.max(0,fish.rest-dt);
    const food=findFood(fish),jelly=habitat==='deep';
-   const nose=habitat==='pond'?10:river?8:habitat==='marsh'?2:habitat==='reef'?fish.nose||5:5;
+   const nose=habitat==='goldfish'?8:habitat==='medaka'?3:habitat==='pond'?10:river?8:habitat==='marsh'?2:habitat==='reef'?fish.nose||5:5;
    const reachY=jelly?10:0;
    if(food){
     tx=food.x-(jelly?0:fish.approach*nose);
-    ty=food.y-reachY+food.sink*.22;
+    ty=food.y-reachY+(habitat==='medaka'?0:food.sink*.22);
    }
    const dx=tx-fish.x,dy=ty-fish.y,d=Math.max(12,Math.hypot(dx,dy));
    const speed=fish.pace*(.48+fish.power*1.25);
@@ -210,13 +232,19 @@
    const easing=1-Math.exp(-dt*(habitat==='pond'?.8:1.7));
    fish.vx+=(desiredX-fish.vx)*easing;fish.vy+=(desiredY-fish.vy)*easing;
    fish.x=clamp(fish.x+fish.vx*dt,4,W-4);fish.y=clamp(fish.y+fish.vy*dt,waterline()+4,169);
+   if(habitat==='medaka'){
+    keepInBowl(fish);
+    const bearing=food&&Math.hypot(dx,dy)<8?Math.atan2(food.y-fish.y,food.x-fish.x):Math.atan2(fish.vy,fish.vx);
+    const turn=bearing-fish.heading;
+    fish.heading+=Math.atan2(Math.sin(turn),Math.cos(turn))*(1-Math.exp(-dt*4))
+   }
    const facing=food&&Math.abs(dx)<14?fish.approach:river&&!food?-1:Math.abs(fish.vx)>.45?Math.sign(fish.vx):Math.sign(fish.facing);
    fish.facing+=(facing-fish.facing)*(1-Math.exp(-dt*3.7));
    const slope=clamp(fish.vy/(4+Math.abs(fish.vx)),-.38,.38);
    fish.pitch+=(slope-fish.pitch)*(1-Math.exp(-dt*3));
    if(food){
-    const mouthX=fish.x+(jelly?0:fish.facing*nose*Math.cos(fish.pitch));
-    const mouthY=fish.y+reachY+(jelly?0:nose*Math.abs(fish.facing)*Math.sin(fish.pitch));
+    const mouthX=fish.x+(habitat==='medaka'?nose*Math.cos(fish.heading):jelly?0:fish.facing*nose*Math.cos(fish.pitch));
+    const mouthY=fish.y+reachY+(habitat==='medaka'?nose*Math.sin(fish.heading):jelly?0:nose*Math.abs(fish.facing)*Math.sin(fish.pitch));
     if(Math.hypot(food.x-mouthX,food.y-mouthY)<(jelly?4.5:3.7)){
      pellets.splice(pellets.indexOf(food),1);fish.food=null;fish.rest=range(.8,2.2);fish.power*=.4
     }
@@ -260,7 +288,7 @@
   })
  }
  const shoreArt = {};
- for(const id of ['river','marsh','pond']){
+ for(const id of ['river','marsh','pond','goldfish','medaka']){
   const art=new Image();
   shoreArt[id]=art;
   art.onload=()=>{if(habitat===id)draw()};
@@ -296,10 +324,36 @@
   }
   c.restore()
  }
+ const goldfishScales=[
+  ['#d64c29','#fb8843','#ffc280'],['#f4e9ce','#d55637','#ffcf96'],['#c84432','#f36537','#ffb656']
+ ];
+ function drawGoldfish(fish){
+  fishTransform(fish,1.3);
+  const [body,fin,light]=goldfishScales[fish.coat],bend=tailBend(fish);
+  for(let j=0;j<6;j++){
+   const y=bend*j/5;
+   box(-4-j,-1-j*.46+y,2,2,fin);box(-4-j,j*.52+y,2,2,light)
+  }
+  box(-4,-3,8,6,body);box(-2,-4,5,8,body);box(3,-2,4,5,body);
+  box(-3,-5,3,2,fin);box(-1,-3,4,2,light);box(3,-2,3,2,fin);
+  box(1,2,2,3,fin);box(5,-1,1,1,'#312f30');c.restore()
+ }
+ function drawMedaka(fish){
+  c.save();c.translate(Math.round(fish.x),Math.round(fish.y));c.rotate(fish.heading);
+  const body=['#acaa83','#e7b477','#cfd4bc'][fish.coat];
+  const bend=tailBend(fish);
+  box(-5,-1+bend,2,2,'#9da58c');box(-3,bend*.4,3,1,body);
+  box(-1,-1,4,3,body);box(2,-1,2,3,body);box(0,0,3,1,'#f3dcab');
+  box(2,-1,1,1,'#435754');box(2,1,1,1,'#435754');c.restore()
+ }
  function drawShore(id){
   const art=shoreArt[id];
   if(!art.complete||!art.naturalWidth){box(0,0,W,H,'#436771');return}
   c.drawImage(art,0,0);
+  if(id==='goldfish'||id==='medaka'){
+   stocks[id].forEach(id==='goldfish'?drawGoldfish:drawMedaka);
+   return
+  }
   const river=id==='river',marsh=id==='marsh';
   for(let i=0;i<(river?75:27);i++){
    const x=(i*67+time*(river?11+i%8:1.7))%W,y=82+i%6;
