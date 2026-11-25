@@ -81,14 +81,91 @@
   return surface
  }
  const scenery={reef:backdrop,forest:buildScenery('forest'),deep:buildScenery('deep')};
+ // Distances are canvas pixels; velocities and steering rates use seconds.
+ const clamp=(value,low,high)=>Math.max(low,Math.min(high,value));
+ const range=(low,high)=>low+rand()*(high-low);
+ function makeFish(x,y,pace,school=-1){
+  const direction=rand()<.5?-1:1;
+  return {x,y,homeX:x,homeY:y,pace,school,vx:direction*pace*.5,vy:0,
+   targetX:x,targetY:y,goalTime:0,strokeTime:0,power:.5,tail:range(0,6.28),
+   facing:direction,pitch:0};
+ }
+ const stocks={
+  reef:swimmers.map(([x,y],i)=>makeFish(x,y,range(5,10),i<7?-1:i<10?0:1)),
+  forest:Array.from({length:27},(_,i)=>{
+   const school=Math.floor(i/9);
+   return makeFish(61+school*146+(i%5)*8,53+(school%2)*34+Math.sin(i*4)*12,range(12,17),school)
+  }),
+  pond:[],river:[]
+ };
+ for(let i=0;i<8;i++){
+  const x=28+(i*59)%413,y=105+(i*19)%44;
+  stocks.pond.push(makeFish(x,y,range(5,9)));
+  const trout=makeFish(x,y,range(10,15));trout.vx=-1;trout.facing=-1;
+  stocks.river.push(trout)
+ }
+ function swim(dt){
+  const stock=stocks[habitat];if(!stock||dt<=0)return;
+  const river=habitat==='river',shore=river||habitat==='pond';
+  const low=shore?99:24,high=shore?151:130;
+  for(const fish of stock){
+   fish.goalTime-=dt;fish.strokeTime-=dt;
+   if(fish.goalTime<=0){
+    const reach=river?16:habitat==='pond'?112:78;
+    fish.targetX=clamp(fish.homeX+range(-reach,reach),20,W-20);
+    fish.targetY=clamp(fish.homeY+range(-18,18),low,high);
+    fish.goalTime=range(4,12)
+   }
+   if(fish.strokeTime<=0){
+    fish.power=range(.65,1);fish.strokeTime=range(.65,2.8)
+   }
+   fish.power*=Math.exp(-dt*(river?1.5:2.2));
+   let tx=fish.targetX,ty=fish.targetY,avoidX=0,avoidY=0;
+   const leader=fish.school<0?null:stock.find(peer=>peer.school===fish.school);
+   if(leader&&leader!==fish){
+    // Follow a moving shoalmate while keeping room to turn independently.
+    tx=leader.x+(fish.homeX-leader.homeX)*.75+leader.vx*.85;
+    ty=leader.y+(fish.homeY-leader.homeY)*.85+leader.vy*.8
+   }
+   for(const other of stock){
+    if(other===fish)continue;
+    const dx=fish.x-other.x,dy=fish.y-other.y,d=Math.hypot(dx,dy);
+    const spacing=habitat==='forest'?9:16;
+    if(d>0&&d<spacing){
+     avoidX+=dx/d*(spacing-d);avoidY+=dy/d*(spacing-d)
+    }
+   }
+   const dx=tx-fish.x,dy=ty-fish.y,d=Math.max(12,Math.hypot(dx,dy));
+   const speed=fish.pace*(.48+fish.power*1.25);
+   let desiredX=dx/d*speed+avoidX,desiredY=dy/d*speed*.65+avoidY;
+   if(river){
+    // The current carries resting trout downstream until a stroke corrects them.
+    desiredX=clamp(dx*.28,-7,7)+2.5-fish.power*7+avoidX;
+    desiredY=dy*.23+avoidY
+   }
+   const easing=1-Math.exp(-dt*(habitat==='pond'?.8:1.7));
+   fish.vx+=(desiredX-fish.vx)*easing;fish.vy+=(desiredY-fish.vy)*easing;
+   fish.x=clamp(fish.x+fish.vx*dt,14,W-14);fish.y=clamp(fish.y+fish.vy*dt,low-3,high+3);
+   const facing=river?-1:Math.abs(fish.vx)>.45?Math.sign(fish.vx):Math.sign(fish.facing);
+   fish.facing+=(facing-fish.facing)*(1-Math.exp(-dt*3.7));
+   const slope=clamp(fish.vy/(4+Math.abs(fish.vx)),-.38,.38);
+   fish.pitch+=(slope-fish.pitch)*(1-Math.exp(-dt*3));
+   fish.tail+=dt*(3+fish.power*17+(river?3:0))
+  }
+ }
+ function fishTransform(fish,size,artDirection=1){
+  c.save();c.translate(Math.round(fish.x),Math.round(fish.y));
+  c.rotate(fish.pitch*(fish.facing>=0?1:-1));
+  const width=.19+.81*Math.abs(fish.facing);
+  c.scale(size*artDirection*(fish.facing>=0?width:-width),size)
+ }
+ function tailBend(fish){
+  return Math.sin(fish.tail)*(.38+1.9*fish.power)
+ }
  function renderTetras(){
-  for(let i=0;i<27;i++){
-   const group=Math.floor(i/9),j=i%9,phase=time*.09+group*2.3;
-   const x=75+group*150+Math.sin(phase)*43+(j%5)*10-22;
-   const y=51+group%2*37+Math.sin(j*4+group)*13+Math.sin(time*.44+i)*2;
-   const dir=Math.cos(phase)>0?1:-1;
-   c.save();c.translate(Math.round(x),Math.round(y));c.scale(dir,1);
-   box(-7,-2,2,4,'#bd806e');box(-5,-1,10,3,'#c4cdac');
+  for(const fish of stocks.forest){
+   fishTransform(fish,1);
+   box(-7,-2+tailBend(fish),2,4,'#bd806e');box(-5,-1,10,3,'#c4cdac');
    box(-4,0,6,2,'#e6685e');box(-3,-1,8,1,'#73ffdf');box(3,-1,1,1,'#123c44');
    box(-1,-3,3,2,'#87a794');c.restore()
   }
@@ -118,13 +195,14 @@
   art.onload=()=>{if(habitat===id)draw()};
   art.src='scenery/'+id+'.png';
  }
- function shoreFish(x,y,scale,direction,kind,phase){
-  c.save();c.translate(Math.round(x),Math.round(y));c.scale(scale*direction,scale);
+ function shoreFish(fish,kind){
+  fishTransform(fish,kind==='river'?1:1.3);
   const trout=kind==='river',base=trout?'#697f75':'#efebcc';
   const accent=trout?'#b79978':'#dd7646';
   box(-8,-2,14,4,base);box(-5,-3,8,1,base);box(-6,2,10,1,trout?'#c6c7a4':'#c5c4a5');
   box(4,-1,5,3,base);box(6,-1,1,1,'#304549');
-  box(-11,-2+Math.round(Math.sin(phase)),3,4,accent);box(-9,-1,3,2,base);
+  const bend=tailBend(fish);
+  box(-11,-2+bend,3,4,accent);box(-9,-1+bend*.45,3,2,base);
   box(-2,-4,3,2,trout?'#526863':accent);box(1,2,3,2,accent);
   if(trout){box(-6,0,9,1,accent);for(let j=0;j<4;j++)box(-5+j*3,-2+j%2,1,1,'#405655')}
   else{box(-5,-2,3,3,accent);box(1,-2,2,4,accent);box(4,0,2,1,'#675c53')}
@@ -147,14 +225,16 @@
     }
    }
   }
-  for(let i=0;i<(marsh?17:8);i++){
-   const phase=time*(river?.23:.12)+i*2.4;
+  if(!marsh){
+   for(const fish of stocks[id])shoreFish(fish,id);
+   return
+  }
+  for(let i=0;i<17;i++){
+   const phase=time*.12+i*2.4;
    const x=28+(i*59)%413+Math.sin(phase)*18,y=105+(i*19)%44+Math.cos(time*.47+i)*3;
-   if(marsh){
-    const sign=Math.cos(phase)>0?1:-1;
+   const sign=Math.cos(phase)>0?1:-1;
     box(x,y,4,3,'#303e32');box(x+1,y-1,2,1,'#475440');
     for(let k=1;k<=5;k++)box(x+2-k*sign,y+1+Math.sin(k*.6+time*2+i),1,1,'#43543e')
-   }else shoreFish(x,y,river?1:1.3,river?-1:Math.cos(phase)>0?1:-1,id,time*3+i)
   }
   if(marsh){
    const x=236+Math.sin(time*.21)*27,y=65+Math.sin(time*.9)*2;
@@ -166,8 +246,24 @@
  function draw(){c=ctx;if(shoreArt[habitat])return drawShore(habitat);c.drawImage(scenery[habitat],0,0);for(let [x,y,s,p] of bubbles){let yy=(y+H-(time*s*3)%H)%H,xx=x+Math.sin(time*.5+p+yy*.07)*2;box(xx,yy,1,1,'#8dd7df');if(s>1.23){box(xx+1,yy-1,2,1,'#68b6cd');box(xx+3,yy,1,2,'#59a8c2');box(xx+1,yy+2,2,1,'#5297b7')}}
  if(habitat==="forest")return renderTetras();
  if(habitat==="deep")return renderJellies();
- swimmers.forEach(([x,y,id,p,s],i)=>{const speed=.044+(i%4)*.008,phase=time*speed+i*.8,dx=Math.sin(phase)*21,dir=Math.cos(phase)>0?-1:1,rows=fishes[id],map=colors[p];c.save();c.translate(Math.round(x+dx),Math.round(y+Math.sin(time*.37+i)*2.2));c.scale(dir*s,s);for(let j=0;j<rows.length;j++)for(let k=0;k<rows[j].length;k++){const color=map[rows[j][k]];if(color)box(k-6,j-4+(k>9?Math.round(Math.sin(time*4+i)*.55):0),1,1,color)}c.restore()})}
- function frame(now){request=0;if(now-last>=55){time+=last?Math.min(.12,(now-last)/1000):0;last=now;draw()}if(running&&!document.hidden)request=requestAnimationFrame(frame)}
+ stocks.reef.forEach((fish,i)=>{
+  const [, ,id,palette,size]=swimmers[i],rows=fishes[id],map=colors[palette];
+  fishTransform(fish,size,-1);
+  const bend=tailBend(fish);
+  for(let j=0;j<rows.length;j++)for(let k=0;k<rows[j].length;k++){
+   const color=map[rows[j][k]];
+   if(color)box(k-6,j-4+bend*Math.max(0,(k-7)/5),1,1,color)
+  }
+  c.restore()
+ })}
+ function frame(now){
+  request=0;
+  if(now-last>=32){
+   const dt=last?Math.min(.1,(now-last)/1000):0;
+   time+=dt;swim(dt);last=now;draw()
+  }
+  if(running&&!document.hidden)request=requestAnimationFrame(frame)
+ }
  const motion=document.querySelector('#motion');
  function sync(){cancelAnimationFrame(request);last=0;draw();if(running&&!document.hidden)request=requestAnimationFrame(frame);motion.textContent=running?'Ⅱ':'▷';motion.title=running?'水槽の動きを止める':'水槽を動かす';motion.setAttribute('aria-label',motion.title);document.querySelector('#state').textContent=running?'LIVE':'STILL'}
  function chooseHabitat(id){
