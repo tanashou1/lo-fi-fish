@@ -11,3 +11,5 @@ main.wrap{padding-top:20px}
 #next-habitat svg{width:14px}
 .tank.controls-hidden>.glass{display:none}
 .tank.controls-hidden canvas{cursor:default;outline:none}
+.credits{margin-top:14px;color:#a6b8ca;font-size:13px}.credits summary{cursor:pointer;width:fit-content}.credits p{margin:6px 0}.credits a{color:#a0dcd5}
+@media(max-width:420px){.glass{left:7px;right:7px}.viewtools{gap:3px}.viewtools #next-habitat{font-size:12px;padding-inline:5px;gap:1px}.viewtools #tank-bgm{padding-inline:5px}}

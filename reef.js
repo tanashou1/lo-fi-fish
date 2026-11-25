@@ -100,7 +100,7 @@
  };
  for(let i=0;i<8;i++){
   const x=28+(i*59)%413,y=105+(i*19)%44;
-  stocks.pond.push(makeFish(x,y,range(5,9)));
+  const koi=makeFish(x,y,range(5,9));koi.coat=i;stocks.pond.push(koi);
   const trout=makeFish(x,y,range(10,15));trout.vx=-1;trout.facing=-1;
   stocks.river.push(trout)
  }
@@ -266,17 +266,34 @@
   art.onload=()=>{if(habitat===id)draw()};
   art.src='scenery/'+id+'.png';
  }
+ // Each koi keeps its own flank markings as it swims and turns.
+ const koiCoats=[
+  ['#fff3d7','#cb422f','#eb8768','aab..a..'],
+  ['#f2efe4','#e06435','#353747','a..b.aab'],
+  ['#efc557','#cc9333','#fff2ac','.a.b..b.'],
+  ['#383f4e','#f8e8c8','#dc6440','abb..aab'],
+  ['#fff3e0','#ce4637','#f4b497','......aa'],
+  ['#859eac','#e77b4d','#c1d1cd','b.b..aba'],
+  ['#f2b35b','#b44c2c','#ffe292','aa.b.a.b'],
+  ['#f6ead3','#343d49','#989a8e','a..ba.a.']
+ ];
  function shoreFish(fish,kind){
   fishTransform(fish,kind==='river'?1:1.3);
-  const trout=kind==='river',base=trout?'#697f75':'#efebcc';
-  const accent=trout?'#b79978':'#dd7646';
+  const trout=kind==='river',coat=trout?null:koiCoats[fish.coat];
+  const base=trout?'#697f75':coat[0];
+  const accent=trout?'#b79978':coat[1];
   box(-8,-2,14,4,base);box(-5,-3,8,1,base);box(-6,2,10,1,trout?'#c6c7a4':'#c5c4a5');
   box(4,-1,5,3,base);box(6,-1,1,1,'#304549');
   const bend=tailBend(fish);
   box(-11,-2+bend,3,4,accent);box(-9,-1+bend*.45,3,2,base);
   box(-2,-4,3,2,trout?'#526863':accent);box(1,2,3,2,accent);
   if(trout){box(-6,0,9,1,accent);for(let j=0;j<4;j++)box(-5+j*3,-2+j%2,1,1,'#405655')}
-  else{box(-5,-2,3,3,accent);box(1,-2,2,4,accent);box(4,0,2,1,'#675c53')}
+  else{
+   for(let j=0;j<coat[3].length;j++){
+    const patch=coat[3][j];
+    if(patch!=='.')box(-7+j*1.5,-2+j%2,2,2+(j%3===0?1:0),coat[patch==='a'?1:2])
+   }
+  }
   c.restore()
  }
  function drawShore(id){
@@ -360,11 +377,13 @@
   draw()
  }
  const habitatOrder=Object.keys(scenes);
- document.getElementById('next-habitat').onclick=()=>{
-  const nextIndex=(habitatOrder.indexOf(habitat)+1)%habitatOrder.length;
+ function cycleHabitat(step){
+  const nextIndex=(habitatOrder.indexOf(habitat)+step+habitatOrder.length)%habitatOrder.length;
   chooseHabitat(habitatOrder[nextIndex]);
   try{localStorage.setItem('aqua-habitat',habitat)}catch{}
- };
+ }
+ document.getElementById('prev-habitat').onclick=()=>cycleHabitat(-1);
+ document.getElementById('next-habitat').onclick=()=>cycleHabitat(1);
  try{const stored=localStorage.getItem('aqua-habitat');if(Object.hasOwn(scenes,stored))chooseHabitat(stored)}catch{}
  document.addEventListener('visibilitychange',sync);sync();
 })();
