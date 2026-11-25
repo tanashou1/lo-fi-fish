@@ -354,7 +354,7 @@
   if(habitat!==id)pellets.length=0;
   habitat=id;
   const [name,description]=scenes[id];
-  document.title='Aqua Drift — '+name;
+  document.title='Lo-fi Fish — '+name;
   canvas.setAttribute('aria-label',description+'。タップして餌をあげる');
   for(const button of document.querySelectorAll('[data-habitat]'))button.setAttribute('aria-pressed',String(button.dataset.habitat===id));
   draw()
