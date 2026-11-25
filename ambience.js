@@ -5,7 +5,7 @@ for (const layer of document.querySelectorAll('.layer')) {
   const slider = layer.querySelector('input');
   const output = layer.querySelector('output');
   const label = button.querySelector('strong').textContent;
-  const version = {stream: '?v=brook', bubbles: '?v=aerator'};
+  const version = {stream: '?v=brook', bubbles: '?v=tankpump'};
   const audio = new Audio('audio/' + key + '.mp3' + (version[key] || ''));
   audio.preload = 'none';
   audio.loop = true;
