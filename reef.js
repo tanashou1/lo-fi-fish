@@ -36,11 +36,100 @@
  const colors=[{a:'#d96547',b:'#ffa445',w:'#fff0c0',e:'#172b46'},{a:'#5357ac',b:'#8badff',w:'#5ee3df',e:'#1b2953'},{a:'#c59c41',b:'#ffe279',w:'#fff0ae',e:'#26395a'},{a:'#b8527d',b:'#fc99ac',w:'#ffcbb0',e:'#26395a'}];
  const swimmers=[[64,47,0,0,1.65],[154,82,1,1,1.35],[313,53,0,0,1.6],[392,96,1,3,1.45],[228,112,2,2,1.25],[277,78,1,1,1.05],[110,118,2,2,1],[174,45,2,2,.85],[188,50,2,2,.8],[199,42,2,2,.8],[365,34,2,1,.77],[378,40,2,1,.8],[353,42,2,1,.7]];
  const bubbles=Array.from({length:64},()=>[rand()*W,rand()*H,.45+rand(),rand()*6]);
+ const scenes = {
+  reef: ['静かな珊瑚礁','Coral Lagoon','珊瑚礁の間を色とりどりの熱帯魚が泳ぐドット絵'],
+  forest: ['木漏れ日の水草林','Emerald Creek','木漏れ日の差す淡水の水槽。流木と緑の水草の間をネオンテトラが泳ぐドット絵'],
+  deep: ['月明かりの深海','Midnight Medusae','濃紺の海で淡く光るクラゲが触手を揺らすドット絵']
+ };
+ let habitat='reef';
+ function buildScenery(id){
+  const surface=document.createElement('canvas');surface.width=W;surface.height=H;c=surface.getContext('2d');
+  const forest=id==='forest', water=c.createLinearGradient(0,0,0,H);
+  water.addColorStop(0,forest?'#699e79':'#222349');water.addColorStop(.35,forest?'#2d7163':'#131e42');water.addColorStop(1,forest?'#153d43':'#07152b');box(0,0,W,H,water);
+  if(forest){
+   for(let i=0;i<48;i++){
+    const x=int(-40,W+100),end=int(65,170),width=int(2,13);
+    for(let y=0;y<end;y++)box(x-y*.65,y,width,1,'rgba(223,244,169,'+(.092*(1-y/end))+')')
+   }
+   ridge(145,8,'#2b6255',34);
+   for(let i=0;i<160;i++)kelp(int(0,W),int(151,184),int(14,66),'#306e5b','#39785c');
+   ridge(167,7,'#504c43',48);
+   const wood=['#413e38','#706047','#917b50'];
+   for(const [x,y,len,angle] of [[18,181,81,-.67],[77,148,31,-1.1],[118,133,29,-.27],[455,182,87,-2.7],[385,153,28,-2.0]]){
+    const X=x+Math.cos(angle)*len,Y=y+Math.sin(angle)*len;
+    line(x,y,X,Y,wood[0],6);line(x,y,X,Y,wood[1],3);line(x,y,X,Y,wood[2])
+   }
+   for(let i=0;i<950;i++)box(int(0,W),int(166,184),int(1,3),1,['#6e6654','#839075','#514f43'][int(0,2)]);
+   for(const x of [8,49,124,181,331,388,453,475])for(let i=0;i<10;i++){
+    const base=x+int(-9,9),y=int(170,183),h=int(19,73),lean=int(-14,14);
+    for(let j=0;j<h;j++){const q=j/h,l=base+q*lean+4*Math.sin(q*5+x),w=1+Math.round(Math.sin(Math.PI*q)*3);
+     box(l,y-j,w,1,'#38794d');box(l,y-j,1,1,'#8eb66b')}
+   }
+   for(let i=0;i<54;i++){const x=int(0,W),y=int(0,6);box(x,y,int(3,10),2,'#669861');box(x+1,y,int(1,5),1,'#a2b87a')}
+  } else {
+   for(let i=0;i<440;i++)box(int(0,W),int(0,H),1,1,['#293851','#253954','#334961'][int(0,2)]);
+   ridge(155,12,'#1c2946',40);ridge(174,10,'#111d33',29);
+   for(let i=0;i<38;i++){let x=int(0,W);rock(x,int(180,194),int(9,42),int(4,22),['#111a32','#222940','#34344f'])}
+   for(let i=0;i<52;i++){
+    const x=int(0,W),y=int(170,183),h=int(2,11);
+    line(x,y,x+2,y-h,'#45506a');box(x+1,y-h-1,2,2,'#69a7ae')
+   }
+  }
+  return surface
+ }
+ const scenery={reef:backdrop,forest:buildScenery('forest'),deep:buildScenery('deep')};
+ function renderTetras(){
+  for(let i=0;i<27;i++){
+   const group=Math.floor(i/9),j=i%9,phase=time*.09+group*2.3;
+   const x=75+group*150+Math.sin(phase)*43+(j%5)*10-22;
+   const y=51+group%2*37+Math.sin(j*4+group)*13+Math.sin(time*.44+i)*2;
+   const dir=Math.cos(phase)>0?1:-1;
+   c.save();c.translate(Math.round(x),Math.round(y));c.scale(dir,1);
+   box(-7,-2,2,4,'#bd806e');box(-5,-1,10,3,'#c4cdac');
+   box(-4,0,6,2,'#e6685e');box(-3,-1,8,1,'#73ffdf');box(3,-1,1,1,'#123c44');
+   box(-1,-3,3,2,'#87a794');c.restore()
+  }
+ }
+ function renderJellies(){
+  const individuals=[[64,71,1.1],[138,108,.75],[217,63,1.4],[294,105,.75],[370,62,1.08],[432,105,.62]];
+  individuals.forEach(([x,y,size],i)=>{
+   const beat=time*.65+i*2.3, fill=i%2?'#a78cc2':'#87b7d7',rim=i%2?'#edbbdd':'#beeced';
+   c.save();c.translate(Math.round(x+Math.sin(beat*.19)*12),Math.round(y+Math.sin(beat)*4));c.scale(size,size);
+   for(let strand=0;strand<6;strand++){
+    const h=13+Math.floor(7*(1+Math.sin(strand*3+i)));
+    for(let k=0;k<h;k++)box(-9+strand*3.5+Math.sin(k*.25-beat+strand)*k/9,k+1,1,1,strand%2?'#787eae':'#6898b8')
+   }
+   const width=11+Math.round(Math.sin(beat)*1.4);
+   for(let k=-10;k<=0;k++){
+    const w=Math.max(2,Math.round(width*Math.sqrt(1-(k/10.2)**2)));
+    box(-w,k,w*2,1,k< -6?rim:fill);box(-w,k,1,1,rim)
+   }
+   for(let k=-width;k<width;k+=4)box(k,0,3,2,rim);
+   box(-5,-6,3,1,'#e4e0ee');box(0,-4,2,2,rim);c.restore()
+  })
+ }
  let time=0,last=0,request=0,running=!matchMedia('(prefers-reduced-motion: reduce)').matches;
- function draw(){c=ctx;c.drawImage(backdrop,0,0);for(let [x,y,s,p] of bubbles){let yy=(y+H-(time*s*3)%H)%H,xx=x+Math.sin(time*.5+p+yy*.07)*2;box(xx,yy,1,1,'#8dd7df');if(s>1.23){box(xx+1,yy-1,2,1,'#68b6cd');box(xx+3,yy,1,2,'#59a8c2');box(xx+1,yy+2,2,1,'#5297b7')}}
+ function draw(){c=ctx;c.drawImage(scenery[habitat],0,0);for(let [x,y,s,p] of bubbles){let yy=(y+H-(time*s*3)%H)%H,xx=x+Math.sin(time*.5+p+yy*.07)*2;box(xx,yy,1,1,'#8dd7df');if(s>1.23){box(xx+1,yy-1,2,1,'#68b6cd');box(xx+3,yy,1,2,'#59a8c2');box(xx+1,yy+2,2,1,'#5297b7')}}
+ if(habitat==="forest")return renderTetras();
+ if(habitat==="deep")return renderJellies();
  swimmers.forEach(([x,y,id,p,s],i)=>{const speed=.044+(i%4)*.008,phase=time*speed+i*.8,dx=Math.sin(phase)*21,dir=Math.cos(phase)>0?-1:1,rows=fishes[id],map=colors[p];c.save();c.translate(Math.round(x+dx),Math.round(y+Math.sin(time*.37+i)*2.2));c.scale(dir*s,s);for(let j=0;j<rows.length;j++)for(let k=0;k<rows[j].length;k++){const color=map[rows[j][k]];if(color)box(k-6,j-4+(k>9?Math.round(Math.sin(time*4+i)*.55):0),1,1,color)}c.restore()})}
  function frame(now){request=0;if(now-last>=55){time+=last?Math.min(.12,(now-last)/1000):0;last=now;draw()}if(running&&!document.hidden)request=requestAnimationFrame(frame)}
  const motion=document.querySelector('#motion');
  function sync(){cancelAnimationFrame(request);last=0;draw();if(running&&!document.hidden)request=requestAnimationFrame(frame);motion.textContent=running?'Ⅱ':'▷';motion.title=running?'水槽の動きを止める':'水槽を動かす';motion.setAttribute('aria-label',motion.title);document.querySelector('#state').textContent=running?'LIVE':'STILL'}
+ function chooseHabitat(id){
+  habitat=id;
+  const [name,caption,description]=scenes[id];
+  document.querySelector('h1').textContent=name;
+  document.title='Aqua Drift — '+name;
+  document.querySelector('#scene-caption').textContent=caption;
+  canvas.setAttribute('aria-label',description);
+  for(const button of document.querySelectorAll('[data-habitat]'))button.setAttribute('aria-pressed',String(button.dataset.habitat===id));
+  draw()
+ }
+ for(const button of document.querySelectorAll('[data-habitat]'))button.onclick=()=>{
+  chooseHabitat(button.dataset.habitat);
+  try{localStorage.setItem('aqua-habitat',habitat)}catch{}
+ };
+ try{const stored=localStorage.getItem('aqua-habitat');if(Object.hasOwn(scenes,stored))chooseHabitat(stored)}catch{}
  motion.onclick=()=>{running=!running;sync()};document.addEventListener('visibilitychange',sync);sync();
 })();
