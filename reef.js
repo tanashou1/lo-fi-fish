@@ -374,7 +374,6 @@
   habitatList.value=id;
   document.title='Lo-fi Fish — '+name;
   canvas.setAttribute('aria-label',description+'。タップして餌をあげる');
-  document.getElementById('habitat-name').textContent=name;
   draw()
  }
  const habitatOrder=Object.keys(scenes);

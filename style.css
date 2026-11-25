@@ -18,12 +18,8 @@ main.wrap{padding-top:20px}
 .habitat-nav{gap:0;border:1px solid #668ca270;border-radius:7px;background:#08182adb;overflow:hidden}
 .habitat-nav button{width:32px;height:34px;border:0;border-radius:0;background:transparent}
 .habitat-choice{position:relative;display:grid;place-items:center;width:145px;height:34px;color:#d7edf0;font:500 14px system-ui,sans-serif}
-#habitat-list{width:100%;height:100%;padding:0 21px 0 6px;appearance:none;border:none;border-radius:0;background:transparent;color:inherit;font:inherit;text-align:center;text-align-last:center;cursor:pointer}
+#habitat-list{width:100%;height:100%;padding:0 4px;-webkit-appearance:none;appearance:none;border:none;border-radius:0;background:transparent;color:inherit;font:inherit;text-align:center;text-align-last:center;cursor:pointer}
 #habitat-list option{background:#112433;color:#d7edf0}
 .habitat-nav :focus-visible{outline:2px solid #9affef;outline-offset:-3px}
-.list-mark{pointer-events:none;position:absolute;right:4px;width:15px}
-#habitat-name{display:none}
-.tank:is(:fullscreen,.expanded) :is(#habitat-list,.list-mark){display:none}
-.tank:is(:fullscreen,.expanded) #habitat-name{display:block}
 @media(max-width:680px){.glass{grid-template-columns:auto minmax(0,1fr) auto;gap:5px}.habitat-nav{justify-self:start}.habitat-choice{width:125px;font-size:13px}.habitat-nav button{width:28px}.glass>.viewtools:first-child:has([hidden]){display:none}.glass:has(#hide-tools[hidden]){grid-template-columns:1fr auto}}
 @media(max-width:365px){.tank:is(:fullscreen,.expanded) .habitat-choice{width:100px}.tank:is(:fullscreen,.expanded) .glass{gap:2px}}
