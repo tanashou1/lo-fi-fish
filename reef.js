@@ -43,7 +43,7 @@
   river:['Mountain Stream','山と針葉樹を背にした岩場の早瀬。その下を泳ぐ川魚'],
   marsh:['Marsh','夕暮れのガマの穂とトンボ。沈んだ枝の間を泳ぐオタマジャクシ'],
   pond:['Lily Pond','岸辺の柳と水面のスイレン。葉の下を泳ぐ錦鯉'],
-  goldfish:['Shoji Garden','障子と丸窓を背景に、朱色や更紗の金魚が尾をひらいて泳ぐ和モダン水槽'],
+  goldfish:['Bonsai Garden','松の盆栽と五重の石塔の間を滝が流れ、池に金魚が泳ぐ日本庭園'],
   medaka:['Suribachi Bowl','放射状のすり目が透ける陶器のすり鉢を上から眺める、メダカの水槽']
  };
  let habitat='reef';
@@ -108,7 +108,7 @@
  }
  stocks.reef.forEach((fish,i)=>fish.nose=5*swimmers[i][4]);
  stocks.goldfish=Array.from({length:9},(_,i)=>{
-  const fish=makeFish(44+i*49,46+i*23%77,range(5,9));
+  const fish=makeFish(44+i*49,100+i*23%47,range(5,9));
   fish.coat=i%3;return fish
  });
  stocks.medaka=Array.from({length:21},(_,i)=>{
@@ -125,7 +125,7 @@
  const jellies=[[64,71,1.1],[138,108,.75],[217,63,1.4],[294,105,.75],[370,62,1.08],[432,105,.62]];
  stocks.deep=jellies.map(([x,y])=>makeFish(x,y,range(2,4)));
  stocks.marsh=Array.from({length:17},(_,i)=>makeFish(28+(i*59)%413,105+(i*19)%44,range(4,7)));
- function waterline(){return ['marsh','river','pond'].includes(habitat)?82:1}
+ function waterline(){return ['marsh','river','pond','goldfish'].includes(habitat)?82:1}
  function dropFood(x,y){
   const surface=waterline();
   for(let i=0;i<4;i++){
@@ -292,7 +292,7 @@
   const art=new Image();
   shoreArt[id]=art;
   art.onload=()=>{if(habitat===id)draw()};
-  art.src='scenery/'+id+'.png';
+  art.src='scenery/'+id+'.png'+(id==='goldfish'?'?v=garden':'');
  }
  // Each koi keeps its own flank markings as it swims and turns.
  const koiCoats=[
@@ -351,6 +351,18 @@
   if(!art.complete||!art.naturalWidth){box(0,0,W,H,'#436771');return}
   c.drawImage(art,0,0);
   if(id==='goldfish'||id==='medaka'){
+   if(id==='goldfish'){
+    for(let i=0;i<12;i++){
+     const fall=(time*(.67+i%3*.12)+i*.31)%1;
+     const x=225+i%10+(i%10-5)*fall*fall;
+     box(x,52+fall*26,1,2,'#d5ded0')
+    }
+    for(let i=0;i<4;i++){
+     const phase=(time*.54+i/4)%1;
+     const radius=3+phase*19;
+     for(const side of [-1,1])box(231+side*radius,80+phase*5,3+i,1,'rgba(205,227,207,'+(.7-.6*phase)+')')
+    }
+   }
    stocks[id].forEach(id==='goldfish'?drawGoldfish:drawMedaka);
    return
   }
