@@ -7,7 +7,7 @@ try{const pref=JSON.parse(localStorage.getItem('aqua-drift')||'{}');if(Number.is
 function save(){try{localStorage.setItem('aqua-drift',JSON.stringify({index,volume:audio.volume*100}))}catch{}}
 const icon=path=>'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+path+'"/></svg>';
 el('prev').innerHTML=icon('M6 5h2v14H6zm12 0L9 12l9 7z');el('next').innerHTML=icon('M16 5h2v14h-2zM6 5l9 7-9 7z');
-function playUI(){el('tank-bgm').textContent=audio.paused?'♫ BGM OFF':'♫ BGM ON';el('tank-bgm').setAttribute('aria-pressed',String(!audio.paused));el('play').innerHTML=icon(audio.paused?'M8 4l13 8-13 8z':'M6 5h4v14H6zm8 0h4v14h-4z');el('play').title=audio.paused?'BGMを再生':'BGMを一時停止';el('play').setAttribute('aria-label',el('play').title)}
+function playUI(){el('tank-bgm').textContent=audio.paused?'♫ OFF':'♫ ON';el('tank-bgm').setAttribute('aria-pressed',String(!audio.paused));el('play').innerHTML=icon(audio.paused?'M8 4l13 8-13 8z':'M6 5h4v14H6zm8 0h4v14h-4z');el('play').title=audio.paused?'BGMを再生':'BGMを一時停止';el('play').setAttribute('aria-label',el('play').title)}
 function volumeUI(){let v=audio.muted?0:Math.round(audio.volume*100);el('volume').value=v;el('level').textContent=v+'%';el('mute').title=v?'消音':'消音を解除';el('mute').setAttribute('aria-label',el('mute').title);el('mute').style.opacity=v?1:.55}
 audio.volume=savedVolume/100;let audible=savedVolume||45;
 el('volume').oninput=e=>{audio.muted=false;audio.volume=Number(e.target.value)/100;if(audio.volume)audible=Number(e.target.value);volumeUI();save()};

@@ -135,7 +135,7 @@
  }
  function drawFood(){
   for(const p of pellets){
-   box(p.x,p.y,3,2,'#845735');box(p.x,p.y,2,1,'#ffcf84')
+   box(p.x,p.y,1,1,'#998369')
   }
  }
  function findFood(fish){
