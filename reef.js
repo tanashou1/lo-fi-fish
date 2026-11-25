@@ -88,7 +88,7 @@
   const direction=rand()<.5?-1:1;
   return {x,y,homeX:x,homeY:y,pace,school,vx:direction*pace*.5,vy:0,
    targetX:x,targetY:y,goalTime:0,strokeTime:0,power:.5,tail:range(0,6.28),
-   facing:direction,pitch:0};
+   facing:direction,pitch:0,rest:0,food:null,reaction:range(.22,1.1)};
  }
  const stocks={
   reef:swimmers.map(([x,y],i)=>makeFish(x,y,range(5,10),i<7?-1:i<10?0:1)),
@@ -104,9 +104,60 @@
   const trout=makeFish(x,y,range(10,15));trout.vx=-1;trout.facing=-1;
   stocks.river.push(trout)
  }
+ stocks.reef.forEach((fish,i)=>fish.nose=5*swimmers[i][4]);
+ const pellets=[];
+ const jellies=[[64,71,1.1],[138,108,.75],[217,63,1.4],[294,105,.75],[370,62,1.08],[432,105,.62]];
+ stocks.deep=jellies.map(([x,y])=>makeFish(x,y,range(2,4)));
+ stocks.marsh=Array.from({length:17},(_,i)=>makeFish(28+(i*59)%413,105+(i*19)%44,range(4,7)));
+ function waterline(){return ['marsh','river','pond'].includes(habitat)?82:1}
+ function dropFood(x,y){
+  const surface=waterline();
+  for(let i=0;i<4;i++){
+   // Each flake enters the water separately and loses its falling speed.
+   pellets.push({x:clamp(x+range(-4,4),4,W-4),y:Math.min(y-8,surface-2)-i*2,
+    vy:range(10,22),sink:range(3.7,6.7),phase:range(0,6.28),age:0,owner:null})
+  }
+  while(pellets.length>48)pellets.shift();
+  if(!request&&!document.hidden){last=0;request=requestAnimationFrame(frame)}
+ }
+ function fall(dt){
+  const surface=waterline();
+  for(let i=pellets.length-1;i>=0;i--){
+   const p=pellets[i];p.age+=dt;
+   if(p.y<surface)p.vy+=dt*125;
+   else{
+    p.vy+=(p.sink-p.vy)*(1-Math.exp(-dt*6));
+    p.x=clamp(p.x+dt*(Math.sin(p.age*1.5+p.phase)*1.8+(habitat==='river'?2.2:0)),4,W-4)
+   }
+   p.y=Math.min(166,p.y+p.vy*dt);
+   if(p.age>55)pellets.splice(i,1)
+  }
+ }
+ function drawFood(){
+  for(const p of pellets){
+   box(p.x,p.y,3,2,'#845735');box(p.x,p.y,2,1,'#ffcf84')
+  }
+ }
+ function findFood(fish){
+  if(fish.food&&!pellets.includes(fish.food))fish.food=null;
+  if(fish.food||fish.rest>0)return fish.food;
+  let nearest=null,distance=Infinity;
+  for(const p of pellets){
+   if(p.owner||p.y<waterline()||p.age<fish.reaction)continue;
+   const d=Math.hypot(p.x-fish.x,p.y-fish.y);
+   if(d<distance&&d<42+p.age*9){nearest=p;distance=d}
+  }
+  if(nearest){
+   nearest.owner=fish;fish.food=nearest;
+   fish.approach=nearest.x>=fish.x?1:-1;
+   if(nearest.x<18)fish.approach=-1;
+   if(nearest.x>W-18)fish.approach=1
+  }
+  return nearest
+ }
  function swim(dt){
   const stock=stocks[habitat];if(!stock||dt<=0)return;
-  const river=habitat==='river',shore=river||habitat==='pond';
+  const river=habitat==='river',shore=waterline()>1;
   const low=shore?99:24,high=shore?151:130;
   for(const fish of stock){
    fish.goalTime-=dt;fish.strokeTime-=dt;
@@ -135,21 +186,41 @@
      avoidX+=dx/d*(spacing-d);avoidY+=dy/d*(spacing-d)
     }
    }
+   fish.rest=Math.max(0,fish.rest-dt);
+   const food=findFood(fish),jelly=habitat==='deep';
+   const nose=habitat==='pond'?10:river?8:habitat==='marsh'?2:habitat==='reef'?fish.nose||5:5;
+   const reachY=jelly?10:0;
+   if(food){
+    tx=food.x-(jelly?0:fish.approach*nose);
+    ty=food.y-reachY+food.sink*.22;
+   }
    const dx=tx-fish.x,dy=ty-fish.y,d=Math.max(12,Math.hypot(dx,dy));
    const speed=fish.pace*(.48+fish.power*1.25);
    let desiredX=dx/d*speed+avoidX,desiredY=dy/d*speed*.65+avoidY;
-   if(river){
+   if(food){
+    const pace=jelly?10+fish.power*7:fish.pace+16+fish.power*12;
+    const distance=Math.max(6,Math.hypot(dx,dy));
+    desiredX=dx/distance*pace+avoidX*.22;
+    desiredY=dy/distance*pace+avoidY*.22
+   }else if(river){
     // The current carries resting trout downstream until a stroke corrects them.
     desiredX=clamp(dx*.28,-7,7)+2.5-fish.power*7+avoidX;
     desiredY=dy*.23+avoidY
    }
    const easing=1-Math.exp(-dt*(habitat==='pond'?.8:1.7));
    fish.vx+=(desiredX-fish.vx)*easing;fish.vy+=(desiredY-fish.vy)*easing;
-   fish.x=clamp(fish.x+fish.vx*dt,14,W-14);fish.y=clamp(fish.y+fish.vy*dt,low-3,high+3);
-   const facing=river?-1:Math.abs(fish.vx)>.45?Math.sign(fish.vx):Math.sign(fish.facing);
+   fish.x=clamp(fish.x+fish.vx*dt,4,W-4);fish.y=clamp(fish.y+fish.vy*dt,waterline()+4,169);
+   const facing=food&&Math.abs(dx)<14?fish.approach:river&&!food?-1:Math.abs(fish.vx)>.45?Math.sign(fish.vx):Math.sign(fish.facing);
    fish.facing+=(facing-fish.facing)*(1-Math.exp(-dt*3.7));
    const slope=clamp(fish.vy/(4+Math.abs(fish.vx)),-.38,.38);
    fish.pitch+=(slope-fish.pitch)*(1-Math.exp(-dt*3));
+   if(food){
+    const mouthX=fish.x+(jelly?0:fish.facing*nose*Math.cos(fish.pitch));
+    const mouthY=fish.y+reachY+(jelly?0:nose*Math.abs(fish.facing)*Math.sin(fish.pitch));
+    if(Math.hypot(food.x-mouthX,food.y-mouthY)<(jelly?4.5:3.7)){
+     pellets.splice(pellets.indexOf(food),1);fish.food=null;fish.rest=range(.8,2.2);fish.power*=.4
+    }
+   }
    fish.tail+=dt*(3+fish.power*17+(river?3:0))
   }
  }
@@ -171,10 +242,10 @@
   }
  }
  function renderJellies(){
-  const individuals=[[64,71,1.1],[138,108,.75],[217,63,1.4],[294,105,.75],[370,62,1.08],[432,105,.62]];
-  individuals.forEach(([x,y,size],i)=>{
+  stocks.deep.forEach(({x,y},i)=>{
+   const size=jellies[i][2];
    const beat=time*.65+i*2.3, fill=i%2?'#a78cc2':'#87b7d7',rim=i%2?'#edbbdd':'#beeced';
-   c.save();c.translate(Math.round(x+Math.sin(beat*.19)*12),Math.round(y+Math.sin(beat)*4));c.scale(size,size);
+   c.save();c.translate(Math.round(x),Math.round(y));c.scale(size,size);
    for(let strand=0;strand<6;strand++){
     const h=13+Math.floor(7*(1+Math.sin(strand*3+i)));
     for(let k=0;k<h;k++)box(-9+strand*3.5+Math.sin(k*.25-beat+strand)*k/9,k+1,1,1,strand%2?'#787eae':'#6898b8')
@@ -229,12 +300,10 @@
    for(const fish of stocks[id])shoreFish(fish,id);
    return
   }
-  for(let i=0;i<17;i++){
-   const phase=time*.12+i*2.4;
-   const x=28+(i*59)%413+Math.sin(phase)*18,y=105+(i*19)%44+Math.cos(time*.47+i)*3;
-   const sign=Math.cos(phase)>0?1:-1;
+  for(const tadpole of stocks.marsh){
+   const {x,y,facing:sign,tail}=tadpole;
     box(x,y,4,3,'#303e32');box(x+1,y-1,2,1,'#475440');
-    for(let k=1;k<=5;k++)box(x+2-k*sign,y+1+Math.sin(k*.6+time*2+i),1,1,'#43543e')
+    for(let k=1;k<=5;k++)box(x+2-k*sign,y+1+Math.sin(k*.6+tail),1,1,'#43543e')
   }
   if(marsh){
    const x=236+Math.sin(time*.21)*27,y=65+Math.sin(time*.9)*2;
@@ -242,8 +311,10 @@
    for(const sign of [-1,1])line(x,y,x+sign*4,y-2-Math.abs(Math.sin(time*6))*2,'#d2cbbb')
   }
  }
- let time=0,last=0,request=0,running=!matchMedia('(prefers-reduced-motion: reduce)').matches;
- function draw(){c=ctx;if(shoreArt[habitat])return drawShore(habitat);c.drawImage(scenery[habitat],0,0);for(let [x,y,s,p] of bubbles){let yy=(y+H-(time*s*3)%H)%H,xx=x+Math.sin(time*.5+p+yy*.07)*2;box(xx,yy,1,1,'#8dd7df');if(s>1.23){box(xx+1,yy-1,2,1,'#68b6cd');box(xx+3,yy,1,2,'#59a8c2');box(xx+1,yy+2,2,1,'#5297b7')}}
+ let time=0,last=0,request=0;
+ const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+ function draw(){drawAnimals();drawFood()}
+ function drawAnimals(){c=ctx;if(shoreArt[habitat])return drawShore(habitat);c.drawImage(scenery[habitat],0,0);for(let [x,y,s,p] of bubbles){let yy=(y+H-(time*s*3)%H)%H,xx=x+Math.sin(time*.5+p+yy*.07)*2;box(xx,yy,1,1,'#8dd7df');if(s>1.23){box(xx+1,yy-1,2,1,'#68b6cd');box(xx+3,yy,1,2,'#59a8c2');box(xx+1,yy+2,2,1,'#5297b7')}}
  if(habitat==="forest")return renderTetras();
  if(habitat==="deep")return renderJellies();
  stocks.reef.forEach((fish,i)=>{
@@ -260,17 +331,31 @@
   request=0;
   if(now-last>=32){
    const dt=last?Math.min(.1,(now-last)/1000):0;
-   time+=dt;swim(dt);last=now;draw()
+   time+=dt;fall(dt);swim(dt);last=now;draw()
   }
-  if(running&&!document.hidden)request=requestAnimationFrame(frame)
+  if((!reducedMotion.matches||pellets.length)&&!document.hidden)request=requestAnimationFrame(frame)
  }
- const motion=document.querySelector('#motion');
- function sync(){cancelAnimationFrame(request);last=0;draw();if(running&&!document.hidden)request=requestAnimationFrame(frame);motion.textContent=running?'Ⅱ':'▷';motion.title=running?'水槽の動きを止める':'水槽を動かす';motion.setAttribute('aria-label',motion.title);document.querySelector('#state').textContent=running?'LIVE':'STILL'}
+ function sync(){
+  cancelAnimationFrame(request);request=0;last=0;draw();
+  if((!reducedMotion.matches||pellets.length)&&!document.hidden)request=requestAnimationFrame(frame)
+ }
+ canvas.addEventListener('click',event=>{
+  const rect=canvas.getBoundingClientRect();
+  const scale=Math.max(rect.width/W,rect.height/H);
+  const x=W/2+(event.clientX-rect.left-rect.width/2)/scale;
+  const y=H/2+(event.clientY-rect.top-rect.height/2)/scale;
+  dropFood(x,y)
+ });
+ canvas.addEventListener('keydown',event=>{
+  if(event.key==='Enter'||event.key===' '){event.preventDefault();if(!event.repeat)dropFood(W/2,waterline()+12)}
+ });
+ reducedMotion.addEventListener('change',sync);
  function chooseHabitat(id){
+  if(habitat!==id)pellets.length=0;
   habitat=id;
   const [name,description]=scenes[id];
   document.title='Aqua Drift — '+name;
-  canvas.setAttribute('aria-label',description);
+  canvas.setAttribute('aria-label',description+'。タップして餌をあげる');
   for(const button of document.querySelectorAll('[data-habitat]'))button.setAttribute('aria-pressed',String(button.dataset.habitat===id));
   draw()
  }
@@ -279,5 +364,5 @@
   try{localStorage.setItem('aqua-habitat',habitat)}catch{}
  };
  try{const stored=localStorage.getItem('aqua-habitat');if(Object.hasOwn(scenes,stored))chooseHabitat(stored)}catch{}
- motion.onclick=()=>{running=!running;sync()};document.addEventListener('visibilitychange',sync);sync();
+ document.addEventListener('visibilitychange',sync);sync();
 })();
