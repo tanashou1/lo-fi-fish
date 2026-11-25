@@ -18,6 +18,34 @@ function select(n,resume){index=(n+tracks.length)%tracks.length;audio.src='audio
 el('prev').onclick=()=>select(index-1,!audio.paused);el('next').onclick=()=>select(index+1,!audio.paused);el('tank-bgm').onclick=el('play').onclick=()=>audio.paused?start():audio.pause();audio.onplay=audio.onpause=playUI;select(index,false);volumeUI();
 function clock(){el('clock').textContent=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false})}clock();setInterval(clock,10000);
 const tank=el('tank'),expand=el('expand');
-function expandUI(){expand.title=document.fullscreenElement||tank.classList.contains('expanded')?'全画面表示を終了':'水槽を全画面表示';expand.setAttribute('aria-label',expand.title)}
+const habitats=document.querySelector('.habitats');
+const hideTools=el('hide-tools'),ocean=el('ocean');
+function expandUI(){
+ const full=document.fullscreenElement===tank||tank.classList.contains('expanded');
+ if(full&&habitats.parentNode!==tank)tank.append(habitats);
+ if(!full){
+  ocean.title='タップして餌をあげる';
+  if(habitats.parentNode===tank)tank.before(habitats);
+  tank.classList.remove('controls-hidden');
+ }
+ hideTools.hidden=!full;
+ expand.title=full?'全画面表示を終了':'水槽を全画面表示';
+ expand.setAttribute('aria-label',expand.title)
+}
+hideTools.onclick=()=>{
+ tank.classList.add('controls-hidden');
+ ocean.focus({preventScroll:true});
+ ocean.title='タップして操作を表示';
+};
+function restoreTools(event){
+ if(!tank.classList.contains('controls-hidden'))return;
+ if(event.type==='keydown'&&![' ','Enter'].includes(event.key))return;
+ event.preventDefault();event.stopImmediatePropagation();
+ tank.classList.remove('controls-hidden');
+ ocean.title='タップして餌をあげる';
+ if(event.type==='keydown')hideTools.focus();
+}
+ocean.addEventListener('click',restoreTools,true);
+ocean.addEventListener('keydown',restoreTools,true);
 expand.onclick=async()=>{if(document.fullscreenElement)await document.exitFullscreen();else if(tank.classList.contains('expanded'))tank.classList.remove('expanded');else try{await tank.requestFullscreen()}catch{tank.classList.add('expanded')}expandUI()};
 document.onfullscreenchange=expandUI;document.addEventListener('keydown',e=>{if(e.key==='Escape'){tank.classList.remove('expanded');expandUI()}});

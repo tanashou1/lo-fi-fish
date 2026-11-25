@@ -236,9 +236,9 @@
  function renderTetras(){
   for(const fish of stocks.forest){
    fishTransform(fish,1);
-   box(-7,-2+tailBend(fish),2,4,'#bd806e');box(-5,-1,10,3,'#c4cdac');
-   box(-4,0,6,2,'#e6685e');box(-3,-1,8,1,'#73ffdf');box(3,-1,1,1,'#123c44');
-   box(-1,-3,3,2,'#87a794');c.restore()
+   box(-7,-2+tailBend(fish),2,4,'#bd806e');box(-5,-1,10,3,'#365bc7');
+   box(-4,0,6,2,'#e6685e');box(-5,-1,10,1,'#1685ff');box(-2,-1,3,1,'#59b7ff');box(3,-1,1,1,'#123c44');
+   box(-1,-3,3,2,'#496bb1');c.restore()
   }
  }
  function renderJellies(){
