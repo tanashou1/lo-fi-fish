@@ -37,9 +37,12 @@
  const swimmers=[[64,47,0,0,1.65],[154,82,1,1,1.35],[313,53,0,0,1.6],[392,96,1,3,1.45],[228,112,2,2,1.25],[277,78,1,1,1.05],[110,118,2,2,1],[174,45,2,2,.85],[188,50,2,2,.8],[199,42,2,2,.8],[365,34,2,1,.77],[378,40,2,1,.8],[353,42,2,1,.7]];
  const bubbles=Array.from({length:64},()=>[rand()*W,rand()*H,.45+rand(),rand()*6]);
  const scenes = {
-  reef: ['静かな珊瑚礁','Coral Lagoon','珊瑚礁の間を色とりどりの熱帯魚が泳ぐドット絵'],
-  forest: ['木漏れ日の水草林','Emerald Creek','木漏れ日の差す淡水の水槽。流木と緑の水草の間をネオンテトラが泳ぐドット絵'],
-  deep: ['月明かりの深海','Midnight Medusae','濃紺の海で淡く光るクラゲが触手を揺らすドット絵']
+  reef:['珊瑚礁','熱帯魚の泳ぐ珊瑚礁'],
+  forest:['水草の森','淡水の水草林を泳ぐネオンテトラの群れ'],
+  deep:['深海のクラゲ','濃紺の海で触手を揺らすクラゲ'],
+  river:['渓流','山と針葉樹を背にした岩場の早瀬。その下を泳ぐ川魚'],
+  marsh:['沼','夕暮れのガマの穂とトンボ。沈んだ枝の間を泳ぐオタマジャクシ'],
+  pond:['池','岸辺の柳と水面のスイレン。葉の下を泳ぐ錦鯉']
  };
  let habitat='reef';
  function buildScenery(id){
@@ -108,8 +111,59 @@
    box(-5,-6,3,1,'#e4e0ee');box(0,-4,2,2,rim);c.restore()
   })
  }
+ const shoreArt = {};
+ for(const id of ['river','marsh','pond']){
+  const art=new Image();
+  shoreArt[id]=art;
+  art.onload=()=>{if(habitat===id)draw()};
+  art.src='scenery/'+id+'.png';
+ }
+ function shoreFish(x,y,scale,direction,kind,phase){
+  c.save();c.translate(Math.round(x),Math.round(y));c.scale(scale*direction,scale);
+  const trout=kind==='river',base=trout?'#697f75':'#efebcc';
+  const accent=trout?'#b79978':'#dd7646';
+  box(-8,-2,14,4,base);box(-5,-3,8,1,base);box(-6,2,10,1,trout?'#c6c7a4':'#c5c4a5');
+  box(4,-1,5,3,base);box(6,-1,1,1,'#304549');
+  box(-11,-2+Math.round(Math.sin(phase)),3,4,accent);box(-9,-1,3,2,base);
+  box(-2,-4,3,2,trout?'#526863':accent);box(1,2,3,2,accent);
+  if(trout){box(-6,0,9,1,accent);for(let j=0;j<4;j++)box(-5+j*3,-2+j%2,1,1,'#405655')}
+  else{box(-5,-2,3,3,accent);box(1,-2,2,4,accent);box(4,0,2,1,'#675c53')}
+  c.restore()
+ }
+ function drawShore(id){
+  const art=shoreArt[id];
+  if(!art.complete||!art.naturalWidth){box(0,0,W,H,'#436771');return}
+  c.drawImage(art,0,0);
+  const river=id==='river',marsh=id==='marsh';
+  for(let i=0;i<(river?75:27);i++){
+   const x=(i*67+time*(river?11+i%8:1.7))%W,y=82+i%6;
+   if(Math.sin(time*1.2+i)>.05)box(x,y,2+i%6,1,river?'#c6e6da':marsh?'#b3af8b':'#c3d2af')
+  }
+  if(river){
+   for(const anchor of [61,376]){
+    for(let j=0;j<15;j++){
+     const q=(time*.75+j/15)%1;
+     box(anchor+q*24,82+q*6-Math.sin(q*Math.PI)*4+(j%3),2,1,'#e0ede0')
+    }
+   }
+  }
+  for(let i=0;i<(marsh?17:8);i++){
+   const phase=time*(river?.23:.12)+i*2.4;
+   const x=28+(i*59)%413+Math.sin(phase)*18,y=105+(i*19)%44+Math.cos(time*.47+i)*3;
+   if(marsh){
+    const sign=Math.cos(phase)>0?1:-1;
+    box(x,y,4,3,'#303e32');box(x+1,y-1,2,1,'#475440');
+    for(let k=1;k<=5;k++)box(x+2-k*sign,y+1+Math.sin(k*.6+time*2+i),1,1,'#43543e')
+   }else shoreFish(x,y,river?1:1.3,river?-1:Math.cos(phase)>0?1:-1,id,time*3+i)
+  }
+  if(marsh){
+   const x=236+Math.sin(time*.21)*27,y=65+Math.sin(time*.9)*2;
+   box(x-3,y,8,1,'#4e615d');box(x+4,y-1,2,2,'#596b61');
+   for(const sign of [-1,1])line(x,y,x+sign*4,y-2-Math.abs(Math.sin(time*6))*2,'#d2cbbb')
+  }
+ }
  let time=0,last=0,request=0,running=!matchMedia('(prefers-reduced-motion: reduce)').matches;
- function draw(){c=ctx;c.drawImage(scenery[habitat],0,0);for(let [x,y,s,p] of bubbles){let yy=(y+H-(time*s*3)%H)%H,xx=x+Math.sin(time*.5+p+yy*.07)*2;box(xx,yy,1,1,'#8dd7df');if(s>1.23){box(xx+1,yy-1,2,1,'#68b6cd');box(xx+3,yy,1,2,'#59a8c2');box(xx+1,yy+2,2,1,'#5297b7')}}
+ function draw(){c=ctx;if(shoreArt[habitat])return drawShore(habitat);c.drawImage(scenery[habitat],0,0);for(let [x,y,s,p] of bubbles){let yy=(y+H-(time*s*3)%H)%H,xx=x+Math.sin(time*.5+p+yy*.07)*2;box(xx,yy,1,1,'#8dd7df');if(s>1.23){box(xx+1,yy-1,2,1,'#68b6cd');box(xx+3,yy,1,2,'#59a8c2');box(xx+1,yy+2,2,1,'#5297b7')}}
  if(habitat==="forest")return renderTetras();
  if(habitat==="deep")return renderJellies();
  swimmers.forEach(([x,y,id,p,s],i)=>{const speed=.044+(i%4)*.008,phase=time*speed+i*.8,dx=Math.sin(phase)*21,dir=Math.cos(phase)>0?-1:1,rows=fishes[id],map=colors[p];c.save();c.translate(Math.round(x+dx),Math.round(y+Math.sin(time*.37+i)*2.2));c.scale(dir*s,s);for(let j=0;j<rows.length;j++)for(let k=0;k<rows[j].length;k++){const color=map[rows[j][k]];if(color)box(k-6,j-4+(k>9?Math.round(Math.sin(time*4+i)*.55):0),1,1,color)}c.restore()})}
@@ -118,10 +172,8 @@
  function sync(){cancelAnimationFrame(request);last=0;draw();if(running&&!document.hidden)request=requestAnimationFrame(frame);motion.textContent=running?'Ⅱ':'▷';motion.title=running?'水槽の動きを止める':'水槽を動かす';motion.setAttribute('aria-label',motion.title);document.querySelector('#state').textContent=running?'LIVE':'STILL'}
  function chooseHabitat(id){
   habitat=id;
-  const [name,caption,description]=scenes[id];
-  document.querySelector('h1').textContent=name;
+  const [name,description]=scenes[id];
   document.title='Aqua Drift — '+name;
-  document.querySelector('#scene-caption').textContent=caption;
   canvas.setAttribute('aria-label',description);
   for(const button of document.querySelectorAll('[data-habitat]'))button.setAttribute('aria-pressed',String(button.dataset.habitat===id));
   draw()
