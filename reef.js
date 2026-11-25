@@ -37,12 +37,12 @@
  const swimmers=[[64,47,0,0,1.65],[154,82,1,1,1.35],[313,53,0,0,1.6],[392,96,1,3,1.45],[228,112,2,2,1.25],[277,78,1,1,1.05],[110,118,2,2,1],[174,45,2,2,.85],[188,50,2,2,.8],[199,42,2,2,.8],[365,34,2,1,.77],[378,40,2,1,.8],[353,42,2,1,.7]];
  const bubbles=Array.from({length:64},()=>[rand()*W,rand()*H,.45+rand(),rand()*6]);
  const scenes = {
-  reef:['珊瑚礁','熱帯魚の泳ぐ珊瑚礁'],
-  forest:['水草の森','淡水の水草林を泳ぐネオンテトラの群れ'],
-  deep:['深海のクラゲ','濃紺の海で触手を揺らすクラゲ'],
-  river:['渓流','山と針葉樹を背にした岩場の早瀬。その下を泳ぐ川魚'],
-  marsh:['沼','夕暮れのガマの穂とトンボ。沈んだ枝の間を泳ぐオタマジャクシ'],
-  pond:['池','岸辺の柳と水面のスイレン。葉の下を泳ぐ錦鯉']
+  reef:['Coral Reef','熱帯魚の泳ぐ珊瑚礁'],
+  forest:['Planted Forest','淡水の水草林を泳ぐネオンテトラの群れ'],
+  deep:['Deep Sea','濃紺の海で触手を揺らすクラゲ'],
+  river:['Mountain Stream','山と針葉樹を背にした岩場の早瀬。その下を泳ぐ川魚'],
+  marsh:['Marsh','夕暮れのガマの穂とトンボ。沈んだ枝の間を泳ぐオタマジャクシ'],
+  pond:['Lily Pond','岸辺の柳と水面のスイレン。葉の下を泳ぐ錦鯉']
  };
  let habitat='reef';
  function buildScenery(id){
@@ -356,11 +356,13 @@
   const [name,description]=scenes[id];
   document.title='Lo-fi Fish — '+name;
   canvas.setAttribute('aria-label',description+'。タップして餌をあげる');
-  for(const button of document.querySelectorAll('[data-habitat]'))button.setAttribute('aria-pressed',String(button.dataset.habitat===id));
+  document.getElementById('habitat-name').textContent=name;
   draw()
  }
- for(const button of document.querySelectorAll('[data-habitat]'))button.onclick=()=>{
-  chooseHabitat(button.dataset.habitat);
+ const habitatOrder=Object.keys(scenes);
+ document.getElementById('next-habitat').onclick=()=>{
+  const nextIndex=(habitatOrder.indexOf(habitat)+1)%habitatOrder.length;
+  chooseHabitat(habitatOrder[nextIndex]);
   try{localStorage.setItem('aqua-habitat',habitat)}catch{}
  };
  try{const stored=localStorage.getItem('aqua-habitat');if(Object.hasOwn(scenes,stored))chooseHabitat(stored)}catch{}

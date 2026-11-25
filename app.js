@@ -18,14 +18,11 @@ function select(n,resume){index=(n+tracks.length)%tracks.length;audio.src='audio
 el('prev').onclick=()=>select(index-1,!audio.paused);el('next').onclick=()=>select(index+1,!audio.paused);el('tank-bgm').onclick=el('play').onclick=()=>audio.paused?start():audio.pause();audio.onplay=audio.onpause=playUI;select(index,false);volumeUI();
 function clock(){el('clock').textContent=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false})}clock();setInterval(clock,10000);
 const tank=el('tank'),expand=el('expand');
-const habitats=document.querySelector('.habitats');
 const hideTools=el('hide-tools'),ocean=el('ocean');
 function expandUI(){
  const full=document.fullscreenElement===tank||tank.classList.contains('expanded');
- if(full&&habitats.parentNode!==tank)tank.append(habitats);
  if(!full){
   ocean.title='タップして餌をあげる';
-  if(habitats.parentNode===tank)tank.before(habitats);
   tank.classList.remove('controls-hidden');
  }
  hideTools.hidden=!full;
