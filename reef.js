@@ -43,8 +43,8 @@
   river:['Mountain Stream','山と針葉樹を背にした岩場の早瀬。その下を泳ぐ川魚'],
   marsh:['Marsh','夕暮れのガマの穂とトンボ。沈んだ枝の間を泳ぐオタマジャクシ'],
   pond:['Lily Pond','岸辺の柳と水面のスイレン。葉の下を泳ぐ錦鯉'],
-  goldfish:['Bonsai Garden','松の盆栽と五重の石塔の間を滝が流れ、池に金魚が泳ぐ日本庭園'],
-  medaka:['Suribachi Bowl','放射状のすり目が透ける陶器のすり鉢を上から眺める、メダカの水槽']
+  goldfish:['Bonsai Garden','松の盆栽と五重の石塔の間を滝が流れ、水中の石橋や飛び石の間を金魚が泳ぐ日本庭園'],
+  medaka:['Suribachi Bowl','すり鉢の水面に浮かぶ水草の下を、メダカが泳ぐ水槽']
  };
  let habitat='reef';
  function buildScenery(id){
@@ -292,7 +292,7 @@
   const art=new Image();
   shoreArt[id]=art;
   art.onload=()=>{if(habitat===id)draw()};
-  art.src='scenery/'+id+'.png'+(id==='goldfish'?'?v=garden':'');
+  art.src='scenery/'+id+'.png'+(id==='goldfish'?'?v=submerged':'');
  }
  // Each koi keeps its own flank markings as it swims and turns.
  const koiCoats=[
@@ -346,6 +346,35 @@
   box(-1,-1,4,3,body);box(2,-1,2,3,body);box(0,0,3,1,'#f3dcab');
   box(2,-1,1,1,'#435754');box(2,1,1,1,'#435754');c.restore()
  }
+ // Frogbit rosettes float on the surface, above the swimming medaka.
+ const frogbitLeaves=[
+  '  aaa  ',' abbbba','abccbbb','abbdcbb',' abbdbb','  aabb '
+ ];
+ const frogbitColors={a:'#446c50',b:'#7fa35d',c:'#abbc6f',d:'#607f4e'};
+ const rosettes=[[123,65,0],[137,72,2],[330,116,5],[346,111,3],[352,123,1],[204,41,4]];
+ function floatingPlants(){
+  for(const [anchorX,anchorY,phase] of rosettes){
+   const x=anchorX+Math.round(Math.sin(time*.22+phase)*2);
+   const y=anchorY+Math.round(Math.cos(time*.27+phase)*1.4);
+   for(let root=0;root<3;root++){
+    for(let j=1;j<=9+root*2;j++){
+     const offset=Math.sin(time*.43+phase+j*.22)*j*.23;
+     box(x+(root-1)*j*.45+offset,y+j*.65,1,1,'#527766')
+    }
+   }
+   for(let leaf=0;leaf<4;leaf++){
+    const angle=phase+leaf*1.58;
+    const lx=x+Math.cos(angle)*4,ly=y+Math.sin(angle)*3;
+    for(let row=0;row<frogbitLeaves.length;row++){
+     for(let col=0;col<frogbitLeaves[row].length;col++){
+      const color=frogbitColors[frogbitLeaves[row][col]];
+      if(color)box(lx+col-3,ly+row-3,1,1,color)
+     }
+    }
+   }
+   box(x,y,2,1,'#c0c382')
+  }
+ }
  function drawShore(id){
   const art=shoreArt[id];
   if(!art.complete||!art.naturalWidth){box(0,0,W,H,'#436771');return}
@@ -364,6 +393,7 @@
     }
    }
    stocks[id].forEach(id==='goldfish'?drawGoldfish:drawMedaka);
+   if(id==='medaka')floatingPlants();
    return
   }
   const river=id==='river',marsh=id==='marsh';
