@@ -313,7 +313,7 @@
   const art=new Image();
   shoreArt[id]=art;
   art.onload=()=>{if(habitat===id)draw()};
-  art.src='scenery/'+id+'.png'+(id==='goldfish'?'?v=submerged':id==='medaka'?'?v=outdoor':'');
+  art.src='scenery/'+id+'.png'+(id==='goldfish'?'?v=submerged':id==='medaka'?'?v=glaze':'');
  }
  // Each koi keeps its own flank markings as it swims and turns.
  const koiCoats=[
@@ -409,13 +409,20 @@
   box(-3,-5,3,2,fin);box(-1,-3,4,2,light);box(3,-2,3,2,fin);
   box(1,2,2,3,fin);box(5,-1,1,1,'#312f30');c.restore()
  }
+ const medakaCoats=[
+  ['#9b997c','#d4c79e'],['#cd9662','#f1c892'],['#a5b8b2','#e0e9dc']
+ ];
  function drawMedaka(fish){
-  c.save();c.translate(Math.round(fish.x),Math.round(fish.y));c.rotate(fish.heading);
-  const body=['#acaa83','#e7b477','#cfd4bc'][fish.coat];
+  const [flank,back]=medakaCoats[fish.coat];
   const bend=tailBend(fish);
-  box(-5,-1+bend,2,2,'#9da58c');box(-3,bend*.4,3,1,body);
-  box(-1,-1,4,3,body);box(2,-1,2,3,body);box(0,0,3,1,'#f3dcab');
-  box(2,-1,1,1,'#435754');box(2,1,1,1,'#435754');c.restore()
+  c.save();c.translate(Math.round(fish.x)+2,Math.round(fish.y)+3);c.rotate(fish.heading);
+  box(-3,-1,6,2,'rgba(16,48,49,.26)');c.restore();
+  c.save();c.translate(Math.round(fish.x),Math.round(fish.y));c.rotate(fish.heading);
+  box(-7,bend-1,2,3,'rgba(194,209,186,.55)');
+  box(-5,bend*.65,3,1,flank);box(-3,-1+bend*.2,4,2,flank);
+  box(-1,-1,5,3,flank);box(-1,-1,4,1,back);box(3,0,2,1,back);
+  box(0,1,1,2,'rgba(199,216,195,.5)');
+  box(3,-1,1,1,'#364948');box(3,1,1,1,'#364948');c.restore()
  }
  // Frogbit rosettes float on the surface, above the swimming medaka.
  const frogbitLeaves=[
