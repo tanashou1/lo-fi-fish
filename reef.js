@@ -44,7 +44,8 @@
   marsh:['Marsh','夕暮れのガマの穂とトンボ。水面にはカエルとアメンボ、水中にはイモリとオタマジャクシ'],
   pond:['Lily Pond','岸辺の柳と水面のスイレン。葉の下を泳ぐブラックバス、ブルーギル、ライギョ'],
   goldfish:['Bonsai Garden','松の盆栽と五重の石塔の間を滝が流れ、水中の石橋や飛び石の間を金魚が泳ぐ日本庭園'],
-  medaka:['Medaka Water Garden','庭先の藍色の睡蓮鉢。浮き草の下を泳ぐメダカを上から眺める'],
+  medaka:['Medaka Water Garden','水底の小石が透けて見える藍色の睡蓮鉢。浮き草とメダカを斜め上から眺める'],
+  giverny:['Giverny Water Lilies','緑の太鼓橋と柳が映るジヴェルニー風の池。睡蓮の葉の下を小魚が泳ぐ'],
   koiGarden:['Nishikigoi Garden','石組みと木橋に囲まれた日本庭園の池を、錦鯉が回遊する姿を上から眺める']
  };
  let habitat='reef';
@@ -117,18 +118,23 @@
  });
  stocks.medaka=Array.from({length:21},(_,i)=>{
   const group=Math.floor(i/7);
-  const fish=makeFish(196+group*31+(i%7)*4,72+(group%2)*28+Math.sin(i*2)*12,range(7,12),group);
+  const fish=makeFish(196+group*31+(i%7)*4,66+(group%2)*19+Math.sin(i*2)*12,range(7,12),group);
   fish.heading=fish.facing>0?0:Math.PI;fish.coat=i%3;return fish
  });
  stocks.koiGarden=Array.from({length:8},(_,i)=>{
   const fish=makeFish(126+(i*53)%224,67+(i*27)%55,range(5,9));
   fish.heading=fish.facing>0?0:Math.PI;fish.coat=i;return fish
  });
- function overhead(){return habitat==='medaka'||habitat==='koiGarden'}
+ stocks.giverny=Array.from({length:12},(_,i)=>{
+  const group=Math.floor(i/4),fish=makeFish(83+group*148+i%4*8,98+group%2*38+i%4*3,range(5,8),group);
+  fish.heading=fish.facing>0?0:Math.PI;fish.coat=i%2===0?0:2;return fish
+ });
+ function overhead(){return habitat==='medaka'||habitat==='koiGarden'||habitat==='giverny'}
  function keepInWater(point){
-  const garden=habitat==='koiGarden',cy=garden?94:92;
+  if(habitat==='giverny'){point.x=clamp(point.x,10,W-10);point.y=clamp(point.y,73,165);return}
+  const garden=habitat==='koiGarden',cy=garden?94:75;
   const dx=point.x-240,dy=point.y-cy;
-  const u=dx/(garden?177:69),v=dy/(garden?66:69);
+  const u=dx/(garden?177:78),v=dy/(garden?66:43);
   const a=Math.atan2(v,u);
   const limit=garden?.82*(1+.08*Math.sin(3*a+.6)+.055*Math.cos(5*a-.4)+.04*Math.sin(2*a)):1;
   const radius=Math.hypot(u,v)/limit;
@@ -229,7 +235,7 @@
    }
    fish.rest=Math.max(0,fish.rest-dt);
    const food=findFood(fish),jelly=habitat==='deep';
-   const nose=habitat==='goldfish'?8:habitat==='koiGarden'?8:habitat==='medaka'?3:habitat==='pond'?fish.nose:river?8:habitat==='marsh'?(fish.newt?5:2):habitat==='reef'?fish.nose||5:5;
+   const nose=habitat==='goldfish'?8:habitat==='koiGarden'?8:(habitat==='medaka'||habitat==='giverny')?3:habitat==='pond'?fish.nose:river?8:habitat==='marsh'?(fish.newt?5:2):habitat==='reef'?fish.nose||5:5;
    const reachY=jelly?10:0;
    if(food){
     tx=food.x-(jelly?0:fish.approach*nose);
@@ -309,11 +315,11 @@
   })
  }
  const shoreArt = {};
- for(const id of ['river','marsh','pond','goldfish','medaka','koiGarden']){
+ for(const id of ['river','marsh','pond','goldfish','medaka','koiGarden','giverny']){
   const art=new Image();
   shoreArt[id]=art;
   art.onload=()=>{if(habitat===id)draw()};
-  art.src='scenery/'+id+'.png'+(id==='goldfish'?'?v=submerged':id==='medaka'?'?v=glaze':'');
+  art.src='scenery/'+id+'.png'+(id==='goldfish'?'?v=clearpond':id==='medaka'?'?v=clearpond':'');
  }
  // Each koi keeps its own flank markings as it swims and turns.
  const koiCoats=[
@@ -429,7 +435,7 @@
   '  aaa  ',' abbbba','abccbbb','abbdcbb',' abbdbb','  aabb '
  ];
  const frogbitColors={a:'#446c50',b:'#7fa35d',c:'#abbc6f',d:'#607f4e'};
- const rosettes=[[193,67,0],[205,61,2],[275,132,5],[284,123,3],[269,141,1],[250,38,4]];
+ const rosettes=[[187,60,0],[200,56,2],[277,98,5],[288,92,3],[267,105,1],[249,45,4]];
  function floatingPlants(){
   for(const [anchorX,anchorY,phase] of rosettes){
    const x=anchorX+Math.round(Math.sin(time*.22+phase)*2);
@@ -479,10 +485,23 @@
   }
   c.restore()
  }
+ const lilyLeaves=new Image();
+ lilyLeaves.onload=()=>{if(habitat==='giverny')draw()};
+ lilyLeaves.src='scenery/giverny-leaves.png';
+ function drawGiverny(){
+  c.save();c.globalAlpha=.68;stocks.giverny.forEach(drawMedaka);c.restore();
+  for(let i=0;i<52;i++){
+   const y=71+(i*23)%107,x=(i*73+Math.sin(time*.48+i)*2)%W;
+   const light=.06+.05*Math.sin(time*1.2+i);
+   box(x,y,2+i%7,1,'rgba(213,229,216,'+light+')')
+  }
+  if(lilyLeaves.complete&&lilyLeaves.naturalWidth)c.drawImage(lilyLeaves,0,0)
+ }
  function drawShore(id){
   const art=shoreArt[id];
   if(!art.complete||!art.naturalWidth){box(0,0,W,H,'#436771');return}
   c.drawImage(art,0,0);
+  if(id==='giverny'){drawGiverny();return}
   if(id==='koiGarden'){stocks[id].forEach(gardenKoi);gardenBridge();return}
   if(id==='goldfish'||id==='medaka'){
    if(id==='goldfish'){
