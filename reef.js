@@ -43,7 +43,7 @@
   river:['Mountain Stream','山と針葉樹を背にした岩場の早瀬。その下を泳ぐ川魚'],
   marsh:['Marsh','夕暮れのガマの穂とトンボ。水面にはカエルとアメンボ、水中にはイモリとオタマジャクシ'],
   pond:['Lily Pond','岸辺の柳と水面のスイレン。葉の下を泳ぐブラックバス、ブルーギル、ライギョ'],
-  goldfish:['Bonsai Garden','松の盆栽と五重の石塔の間を滝が流れ、水中の石橋や飛び石の間を金魚が泳ぐ日本庭園'],
+  goldfish:['Bonsai Garden','松の盆栽と五重の石塔の間を滝が流れ、水中の石橋のそばを金魚が泳ぐ日本庭園'],
   medaka:['Medaka Water Garden','水底の小石が透けて見える藍色の睡蓮鉢。浮き草とメダカを斜め上から眺める'],
   giverny:['Giverny Water Lilies','緑の太鼓橋と柳が映るジヴェルニー風の池。睡蓮の葉の下を小魚が泳ぐ'],
   koiGarden:['Nishikigoi Garden','石組みと木橋に囲まれた日本庭園の池を、錦鯉が回遊する姿を上から眺める']
@@ -62,9 +62,24 @@
    for(let i=0;i<160;i++)kelp(int(0,W),int(151,184),int(14,66),'#306e5b','#39785c');
    ridge(167,7,'#504c43',48);
    const wood=['#413e38','#706047','#917b50'];
-   for(const [x,y,len,angle] of [[18,181,81,-.67],[77,148,31,-1.1],[118,133,29,-.27],[455,182,87,-2.7],[385,153,28,-2.0]]){
-    const X=x+Math.cos(angle)*len,Y=y+Math.sin(angle)*len;
-    line(x,y,X,Y,wood[0],6);line(x,y,X,Y,wood[1],3);line(x,y,X,Y,wood[2])
+   // Each fork begins on the trunk or another limb and tapers to a twig.
+   const limbs=[
+    [[18,181,7],[49,161,6],[68,148,5],[82,131,3],[93,125,1]],
+    [[49,161,4],[55,146,3],[54,139,1]],
+    [[68,148,4],[86,145,3],[101,136,2],[113,135,1]],
+    [[455,182,8],[423,171,6],[399,155,5],[378,147,3],[364,135,1]],
+    [[399,155,4],[393,143,3],[394,130,1]],
+    [[423,171,4],[408,169,2],[392,171,1]]
+   ];
+   for(const limb of limbs){
+    for(let j=1;j<limb.length;j++){
+     const [x,y,w]=limb[j-1],[X,Y,endWidth]=limb[j],steps=Math.ceil(Math.hypot(X-x,Y-y));
+     for(let k=0;k<=steps;k++){
+      const t=k/steps,bark=Math.round(w+(endWidth-w)*t),xx=x+(X-x)*t,yy=y+(Y-y)*t;
+      box(xx,yy,bark,bark,wood[0]);box(xx,yy,bark,Math.max(1,bark-2),wood[1]);
+      if(bark>2&&k%11<7)box(xx,yy,2,1,wood[2])
+     }
+    }
    }
    for(let i=0;i<950;i++)box(int(0,W),int(166,184),int(1,3),1,['#6e6654','#839075','#514f43'][int(0,2)]);
    for(const x of [8,49,124,181,331,388,453,475])for(let i=0;i<10;i++){
@@ -308,7 +323,9 @@
    const width=11+Math.round(Math.sin(beat)*1.4);
    for(let k=-10;k<=0;k++){
     const w=Math.max(2,Math.round(width*Math.sqrt(1-(k/10.2)**2)));
-    box(-w,k,w*2,1,k< -6?rim:fill);box(-w,k,1,1,rim)
+    box(-w,k,w*2,1,fill);box(-w,k,1,1,rim);
+    box(w-2,k,2,1,'rgba(60,77,117,.36)');
+    if(k< -3)box(-w+2,k,Math.max(1,Math.round(w*.38)),1,'rgba(236,229,246,.28)')
    }
    for(let k=-width;k<width;k+=4)box(k,0,3,2,rim);
    box(-5,-6,3,1,'#e4e0ee');box(0,-4,2,2,rim);c.restore()
@@ -319,7 +336,7 @@
   const art=new Image();
   shoreArt[id]=art;
   art.onload=()=>{if(habitat===id)draw()};
-  art.src='scenery/'+id+'.png'+(id==='goldfish'?'?v=clearpond':id==='medaka'?'?v=clearpond':'');
+  art.src='scenery/'+id+'.png?v=garden-details';
  }
  // Each koi keeps its own flank markings as it swims and turns.
  const koiCoats=[
@@ -473,21 +490,14 @@
   }
   box(6,-2,1,1,'#30434a');box(6,2,1,1,'#30434a');c.restore()
  }
- function gardenBridge(){
-  c.save();c.translate(94,94);c.rotate(.24);
-  box(-9,-33,20,67,'rgba(16,44,44,.32)');
-  for(let j=-34;j<35;j+=4){
-   box(-10,j,19,4,'#725744');box(-10,j,19,2,'#ad8760')
-  }
-  for(const x of [-12,9]){
-   box(x,-36,3,72,'#703f32');box(x,-36,1,72,'#ce9168');
-   for(const y of [-35,-13,11,32]){box(x-1,y,5,4,'#583e33');box(x-1,y,4,2,'#d4a87d')}
-  }
-  c.restore()
+ function loadForeground(id,file){
+  const image=new Image();
+  image.onload=()=>{if(habitat===id)draw()};
+  image.src='scenery/'+file;
+  return image
  }
- const lilyLeaves=new Image();
- lilyLeaves.onload=()=>{if(habitat==='giverny')draw()};
- lilyLeaves.src='scenery/giverny-leaves.png';
+ const koiBridge=loadForeground('koiGarden','garden-bridge.png');
+ const lilyLeaves=loadForeground('giverny','giverny-leaves.png');
  function drawGiverny(){
   c.save();c.globalAlpha=.68;stocks.giverny.forEach(drawMedaka);c.restore();
   for(let i=0;i<52;i++){
@@ -502,7 +512,11 @@
   if(!art.complete||!art.naturalWidth){box(0,0,W,H,'#436771');return}
   c.drawImage(art,0,0);
   if(id==='giverny'){drawGiverny();return}
-  if(id==='koiGarden'){stocks[id].forEach(gardenKoi);gardenBridge();return}
+  if(id==='koiGarden'){
+   stocks[id].forEach(gardenKoi);
+   if(koiBridge.complete&&koiBridge.naturalWidth)c.drawImage(koiBridge,0,0);
+   return
+  }
   if(id==='goldfish'||id==='medaka'){
    if(id==='goldfish'){
     for(let i=0;i<12;i++){
